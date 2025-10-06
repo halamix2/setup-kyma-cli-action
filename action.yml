@@ -40,18 +40,18 @@ runs:
         echo "Downloading ${filename}"
 
         CLI_TMPDIR=cli-$(date "+%Y-%m-%d_%H_%M_%S")
-        mkdir -p ${CLI_TMPDIR}
+        mkdir -p "${CLI_TMPDIR}"
         gh release download --repo kyma-project/cli "${KYMA_CLI_VERSION}" -p "${filename}" -O "${CLI_TMPDIR}/cli.${EXT}"
 
         if [[ "${OS}" == "Windows" ]]; then
-          unzip ${CLI_TMPDIR}/cli.zip -d ${CLI_TMPDIR}
+          unzip "${CLI_TMPDIR}/cli.zip" -d "${CLI_TMPDIR}"
           target=~/bin
           if [[ -n "${TARGET_DIR}" ]]; then
             target="${TARGET_DIR}"
           fi
           mkdir -p "${target}"
-          mv ${CLI_TMPDIR}/kyma.exe "${target}/kyma.exe"
-          rm -r ${CLI_TMPDIR}
+          mv "${CLI_TMPDIR}/kyma.exe" "${target}/kyma.exe"
+          rm -r "${CLI_TMPDIR}"
           echo "Installed $(kyma version) to $(readlink -f "${target}/kyma.exe")"
           exit 0
         fi
@@ -66,11 +66,11 @@ runs:
           target="${TARGET_DIR}"
         fi
 
-        tar "${force_local}" -zxvf ${CLI_TMPDIR}/cli.tar.gz kyma 
+        tar "${force_local}" -zxvf "${CLI_TMPDIR}/cli.tar.gz" kyma 
         mkdir -p "${target}/bin"
         mv kyma "${target}/bin"
-        rm -r ${CLI_TMPDIR}
-        echo "Installed $(kyma version) to $(readlink -f "${target}/bin/kyma.exe")"
+        rm -r "${CLI_TMPDIR}"
+        echo "Installed $(kyma version) to $(readlink -f "${target}/bin/kyma")"
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
         TARGET_DIR: ${{ inputs.target-dir }}
