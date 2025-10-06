@@ -4,6 +4,10 @@ inputs:
   version:
     description: "Version of Kyma CLI to use"
     required: false
+  target-dir:
+    description: "Directory to install Kyma CLI to"
+    required: false
+    default: ""
   token:
     description: "Token to access GitHub API"
     required: true
@@ -41,10 +45,14 @@ runs:
 
         if [[ "${OS}" == "Windows" ]]; then
           unzip ${CLI_TMPDIR}/cli.zip -d ${CLI_TMPDIR}
-          mkdir -p ~/bin
-          mv ${CLI_TMPDIR}/kyma.exe ~/bin/kyma.exe
+          target=~/bin
+          if [[ -n "${TARGET_DIR}" ]]; then
+            target="${TARGET_DIR}"
+          fi
+          mkdir -p "${target}"
+          mv ${CLI_TMPDIR}/kyma.exe "${target}/kyma.exe"
           rm -r ${CLI_TMPDIR}
-          echo "Installed $(kyma version)"
+          echo "Installed $(kyma version) to $(readlink -f "${target}/kyma.exe")"
           exit 0
         fi
 
@@ -53,13 +61,19 @@ runs:
           force_local="--force-local"
         fi
 
+        target=~/.local
+        if [[ -n "${TARGET_DIR}" ]]; then
+          target="${TARGET_DIR}"
+        fi
+
         tar "${force_local}" -zxvf ${CLI_TMPDIR}/cli.tar.gz kyma 
-        mkdir -p ~/.local/bin
-        mv kyma ~/.local/bin
+        mkdir -p "${target}/bin"
+        mv kyma "${target}/bin"
         rm -r ${CLI_TMPDIR}
-        echo "Installed $(kyma version)"
+        echo "Installed $(kyma version) to $(readlink -f "${target}/bin/kyma.exe")"
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
+        TARGET_DIR: ${{ inputs.target-dir }}
 branding:
   icon: "download"
   color: "blue"
