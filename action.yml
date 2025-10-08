@@ -45,7 +45,7 @@ runs:
 
         if [[ "${OS}" == "Windows" ]]; then
           unzip "${CLI_TMPDIR}/cli.zip" -d "${CLI_TMPDIR}"
-          target=~/bin
+          target=/c/vcpkg
           if [[ -n "${TARGET_DIR}" ]]; then
             target="${TARGET_DIR}"
           fi
