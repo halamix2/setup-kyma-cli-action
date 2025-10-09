@@ -23,6 +23,8 @@ runs:
       shell: bash
       run: |
         echo "oto jest ${GITHUB_TOKEN}, oczekiwany..."
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
     - name: "Calculate cache key"
       id: calculate
       shell: bash
