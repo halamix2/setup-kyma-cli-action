@@ -18,6 +18,10 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: "ugabuga"
+      shell: bash
+      run: |
+        echo "oto jest ${GITHUB_TOKEN}, oczekiwany..."
     - name: "Calculate cache key"
       id: calculate
       shell: bash
