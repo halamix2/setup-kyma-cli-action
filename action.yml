@@ -11,18 +11,63 @@ inputs:
   token:
     description: "Token to access GitHub API"
     required: true
+  force:
+    description: "Skip cache and force reinstallation"
+    required: false
+    default: "false"
 runs:
   using: "composite"
   steps:
-    - name: "Install Kyma CLI"
+    - name: "Calculate cache key"
+      id: calculate
       shell: bash
       run: |
-        set -e
-
         KYMA_CLI_VERSION="${{ inputs.version }}"
         if [[ -z "${KYMA_CLI_VERSION}" ]]; then
           KYMA_CLI_VERSION="$(gh release list --repo kyma-project/cli --json name,isLatest --jq '.[] | select(.isLatest)|.name')"
         fi
+        echo "kyma_cli_version=${KYMA_CLI_VERSION}" >> $GITHUB_OUTPUT
+
+        ARCH="$(uname -m)"
+        echo "kyma_cli_arch=${ARCH}" >> $GITHUB_OUTPUT
+
+        OS="$(uname -s)"
+        if [[ "${OS}" =~ MINGW* ]]; then
+          OS="Windows"
+        fi
+
+        if [[ "${OS}" == "Windows" ]]; then
+          target=/c/vcpkg
+          if [[ -n "${TARGET_DIR}" ]]; then
+            target="${TARGET_DIR}"
+          fi
+          echo "kyma_cli_path=${target}/kyma.exe" >> $GITHUB_OUTPUT
+        else 
+          target=~/.local/bin
+          if [[ -n "${TARGET_DIR}" ]]; then
+            target="${TARGET_DIR}"
+          fi
+          echo "kyma_cli_path=${target}/kyma" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        TARGET_DIR: ${{ inputs.target-dir }}
+    - name: Kyma CLI cache"
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ steps.calculate.outputs.kyma_cli_path }}
+        key: kyma-cli-${{ runner.os }}-${{ steps.calculate.outputs.kyma_cli_arch }}-${{ steps.calculate.outputs.kyma_cli_version }}
+
+    - name: "Install Kyma CLI"
+      id: install
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.force == 'true'
+      shell: bash
+      run: |
+        set -e
+
+        KYMA_CLI_VERSION="${{ steps.calculate.outputs.kyma_cli_version }}"
 
         ARCH="$(uname -m)"
 
@@ -45,14 +90,10 @@ runs:
 
         if [[ "${OS}" == "Windows" ]]; then
           unzip "${CLI_TMPDIR}/cli.zip" -d "${CLI_TMPDIR}"
-          target=/c/vcpkg
-          if [[ -n "${TARGET_DIR}" ]]; then
-            target="${TARGET_DIR}"
-          fi
-          mkdir -p "${target}"
-          mv "${CLI_TMPDIR}/kyma.exe" "${target}/kyma.exe"
+          mkdir -p "${TARGET_PATH%/kyma.exe}"
+          mv "${CLI_TMPDIR}/kyma.exe" "${TARGET_PATH}"
           rm -r "${CLI_TMPDIR}"
-          echo "Installed $(kyma version) to $(readlink -f "${target}/kyma.exe")"
+          echo "Installed $(kyma version) to $(readlink -f "${TARGET_PATH}")"
           exit 0
         fi
 
@@ -61,19 +102,16 @@ runs:
           force_local="--force-local"
         fi
 
-        target=~/.local
-        if [[ -n "${TARGET_DIR}" ]]; then
-          target="${TARGET_DIR}"
-        fi
-
         tar "${force_local}" -zxvf "${CLI_TMPDIR}/cli.tar.gz" kyma 
-        mkdir -p "${target}/bin"
-        mv kyma "${target}/bin"
+        mkdir -p "${TARGET_PATH%/kyma}"
+        mv kyma "${TARGET_PATH}"
         rm -r "${CLI_TMPDIR}"
-        echo "Installed $(kyma version) to $(readlink -f "${target}/bin/kyma")"
+
+        echo "Installed $(kyma version) to $(readlink -f "${TARGET_PATH}")"
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
-        TARGET_DIR: ${{ inputs.target-dir }}
+        KYMA_CLI_VERSION: ${{ steps.calculate.outputs.kyma_cli_version }}
+        TARGET_PATH: ${{ steps.calculate.outputs.kyma_cli_path }}
 branding:
   icon: "download"
   color: "blue"
